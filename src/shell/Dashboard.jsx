@@ -3,8 +3,9 @@
 //  renders this whenever student !== null and no lesson is
 //  active). Reads COURSE_CONFIG.modules to draw the full course
 //  map, and uses `completedUnits` (passed down from App.jsx,
-//  fetched via api.js → Code.gs "getProgress") to decide what's
-//  done, what's unlocked, and what's still locked.
+//  fetched via api.js → Code.gs "getProgress") to decide which
+//  units show as done vs not-yet-done. Navigation is free — any
+//  unit can be opened in any order, regardless of completion.
 //
 //  Shell file — never changes between courses. Adding/removing
 //  units is done entirely in config/course.config.js; this file
@@ -33,19 +34,12 @@ export default function Dashboard({ student, completedUnits, onSelectUnit }) {
   const totalUnits = COURSE_CONFIG.modules.reduce((acc, m) => acc + m.units.length, 0);
   const pct = Math.round((completedUnits.length / totalUnits) * 100);
 
-  // Linear unlock rule: the very first unit of the course is
-  // always open; every other unit unlocks only once the unit
-  // immediately before it (in config order, across module
-  // boundaries) has been completed. This enforces a strict
-  // learning sequence without needing extra state anywhere else —
-  // it's derived purely from COURSE_CONFIG + completedUnits.
-  function isUnlocked(moduleIdx, unitIdx) {
-    if (moduleIdx === 0 && unitIdx === 0) return true;
-    let prevUnitId;
-    if (unitIdx > 0) { prevUnitId = COURSE_CONFIG.modules[moduleIdx].units[unitIdx - 1].unitId; }
-    else { const pm = COURSE_CONFIG.modules[moduleIdx - 1]; prevUnitId = pm.units[pm.units.length - 1].unitId; }
-    return completedUnits.includes(prevUnitId);
-  }
+  // Free navigation: every unit is always clickable, in any order.
+  // We no longer gate access on "previous unit completed" — students
+  // can jump straight to whatever they want to read next. We still
+  // track completedUnits (passed down from App.jsx) purely to show
+  // progress (✅ done vs ▶️ not-yet-done) and the overall % bar;
+  // there's no locked state left to compute.
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'system-ui, sans-serif' }}>
@@ -79,8 +73,8 @@ export default function Dashboard({ student, completedUnits, onSelectUnit }) {
       </div>
 
       {/* Module → unit grid. Each module is a labeled section;
-          each unit is a clickable tile whose look depends on
-          done / unlocked / locked state computed above. */}
+          every unit is always a clickable tile — the only visual
+          distinction now is done (✅, green) vs not-yet-done (▶️). */}
       <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 28 }}>
         {COURSE_CONFIG.modules.map((mod, mIdx) => (
           <div key={mod.moduleId}>
@@ -91,18 +85,17 @@ export default function Dashboard({ student, completedUnits, onSelectUnit }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
               {mod.units.map((unit, uIdx) => {
                 const done = completedUnits.includes(unit.unitId);
-                const unlocked = isUnlocked(mIdx, uIdx);
                 const accent = MODULE_COLORS[mIdx % MODULE_COLORS.length];
                 return (
-                  <div key={unit.unitId} onClick={() => unlocked && onSelectUnit(unit.unitId)}
-                    style={{ background: done ? '#0D2818' : unlocked ? C.card : C.surface, border: `1px solid ${done ? C.green : unlocked ? accent + '55' : C.border}`, borderRadius: 10, padding: '14px 18px', minWidth: 200, maxWidth: 260, cursor: unlocked ? 'pointer' : 'not-allowed', opacity: unlocked ? 1 : 0.45, transition: 'transform 0.15s' }}
-                    onMouseEnter={e => { if (unlocked) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  <div key={unit.unitId} onClick={() => onSelectUnit(unit.unitId)}
+                    style={{ background: done ? '#0D2818' : C.card, border: `1px solid ${done ? C.green : accent + '55'}`, borderRadius: 10, padding: '14px 18px', minWidth: 200, maxWidth: 260, cursor: 'pointer', transition: 'transform 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = ''; }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ color: C.muted, fontSize: 11, fontFamily: 'monospace' }}>{unit.unitId.replace('_', '.')}</span>
-                      <span style={{ fontSize: 14 }}>{done ? '✅' : unlocked ? '▶️' : '🔒'}</span>
+                      <span style={{ fontSize: 14 }}>{done ? '✅' : '▶️'}</span>
                     </div>
-                    <div style={{ color: done ? C.green : unlocked ? C.text : C.muted, fontSize: 14, fontWeight: 600, marginTop: 6 }}>{unit.title}</div>
+                    <div style={{ color: done ? C.green : C.text, fontSize: 14, fontWeight: 600, marginTop: 6 }}>{unit.title}</div>
                   </div>
                 );
               })}
