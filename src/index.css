@@ -1,0 +1,21 @@
+/* ============================================================
+   GLOBAL STYLES — loaded once in main.jsx, applies to every
+   screen in the app (Login, Dashboard, and every lesson).
+   Keep this minimal: per-component styling is done inline via
+   the COLORS/C objects inside each component, not here.
+   ============================================================ */
+
+/* Reset default browser spacing and make width/height calculations
+   include border+padding (box-sizing: border-box) so layout math
+   inside components is predictable. Applies to every element,
+   including ::before/::after pseudo-elements. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Dark theme base: dark background + light text, matching the
+   GitHub-dark-inspired palette (#0D1117 etc.) used throughout
+   Login.jsx, Dashboard.jsx, and the lesson files. */
+body { background: #0D1117; color: #E6EDF3; font-family: system-ui, sans-serif; }
+
+/* Form controls don't inherit font-family by default in most
+   browsers — force them to match the rest of the page. */
+input, button { font-family: inherit; }

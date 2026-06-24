@@ -1,0 +1,23 @@
+{
+  "name": "WEB PROGRAMMING",
+  "private": true,
+  "version": "1.0.0",
+  "homepage": "https://aishugithub.github.io/course_web",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "gh-pages": "^6.3.0",
+    "vite": "^5.4.1"
+  }
+}
