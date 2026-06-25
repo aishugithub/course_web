@@ -1,12 +1,12 @@
 // ============================================================================
-//  UNIT 3.1 — "Selectors & the Cascade"
+//  UNIT 3.1 — "What Is CSS, and Who Wins When Rules Collide?"
 //  Module: M3 — CSS Styling (first unit of this module)
 //
 //  WHERE THIS FILE FITS IN THE APP:
 //  - This component is loaded by src/shell/App.jsx exactly the same way every
 //    other lesson is: App.jsx reads "Unit3_1" out of config/course.config.js,
 //    renders <Unit3_1 student={...} onUnitComplete={...} />, and then just
-//    waits. It does not know or care HOW this lesson teaches CSS selectors —
+//    waits. It does not know or care HOW this lesson teaches CSS —
 //    it only cares about one event: onUnitComplete() being called exactly
 //    once, at the very end of the quiz, never automatically.
 //  - We deliberately never import api.js or config/gas.config.js in this
@@ -14,14 +14,34 @@
 //    unlocking the next unit). Keeping that boundary means every lesson file
 //    can be tested/edited in complete isolation — see ADDING_NEW_LESSON.md.
 //
+//  WHY THIS UNIT WAS REWORKED (content-only change, same shell/state machine):
+//  Module 2 only taught HTML. A student arriving here has NEVER been told
+//  what CSS even is, or that there's more than one place to write it. The
+//  original version of this unit jumped straight into selectors and the
+//  cascade — which assumes the student already knows CSS exists, what a
+//  rule looks like, and where rules are written. That's too big a leap.
+//  So Stage 1 (BUILD) now opens with THREE new foundational concepts before
+//  selectors are introduced at all, and every concept (old and new) now has
+//  its own small visual animation in the Build stage instead of relying on
+//  text alone. Nothing about the STAGE FLOW, the state variables, or the
+//  onUnitComplete contract changed — only the *content* inside each stage.
+//
 //  TEACHING DESIGN — same six-stage shell used in every unit so far
 //  (Unit1_*, Unit2_*), so students always know "where" they are in a lesson:
-//    Stage 0  SPARK      — a curiosity question BEFORE any teaching, so the
-//                           student predicts first (predict-then-learn).
-//    Stage 1  BUILD      — five core concepts (selector types → combinators
-//                           → specificity → cascade order → why it matters),
-//                           each timer-gated so students can't speed-skip,
-//                           each with a Plain-English ⇄ Technical toggle.
+//    Stage 0  SPARK      — a curiosity question BEFORE any teaching: the
+//                           SAME html, shown two ways, predict why they
+//                           look different (predict-then-learn).
+//    Stage 1  BUILD      — EIGHT concepts now, each timer-gated so students
+//                           can't speed-skip, each with a Plain-English ⇄
+//                           Technical toggle AND a small live animation:
+//                             0. What is CSS, and why do we need it?
+//                             1. Three ways to write CSS (inline/internal/external)
+//                             2. Anatomy of one CSS rule
+//                             3. Selector types (tag / class / ID)
+//                             4. Combinators (descendant / child / grouping)
+//                             5. Specificity (the points system)
+//                             6. The cascade (order, inheritance, !important)
+//                             7. Why all of this matters
 //    Stage 2  SEE IT     — a live "which rule wins" walkthrough: the SAME
 //                           three CSS rules, watched fighting over one
 //                           paragraph, with the winning rule highlighted at
@@ -35,13 +55,14 @@
 //    Stage 4  CHALLENGE  — tag-matching (selector → what it targets), then a
 //                           "spot the bug" hunt where the bug is a selector
 //                           that's needlessly over-specific or mis-targeted.
-//    Stage 5  QUIZ       — 10 questions. Wrong answers NEVER reveal the
-//                           correct option outright — an escalating hint is
-//                           shown instead, and crucially the hint NEVER
-//                           disappears even after many wrong attempts (it
-//                           just stays pinned at the final, most-specific
-//                           hint) so a struggling student is never left with
-//                           zero guidance.
+//    Stage 5  QUIZ       — 13 questions (3 new ones on the CSS foundations,
+//                           10 on selectors/cascade). Wrong answers NEVER
+//                           reveal the correct option outright — an
+//                           escalating hint is shown instead, and crucially
+//                           the hint NEVER disappears even after many wrong
+//                           attempts (it just stays pinned at the final,
+//                           most-specific hint) so a struggling student is
+//                           never left with zero guidance.
 //
 //  MOBILE-FRIENDLINESS: no fixed pixel widths anywhere. Layout uses %,
 //  flexWrap, minmax()/clamp() so every stage is fully usable on a phone —
@@ -65,15 +86,18 @@ export default function Unit3_1({ student, onUnitComplete }) {
   const [sparkSubmitted, setSparkSubmitted] = useState(false);
 
   // ── BUILD stage state ──────────────────────────────────────────────────────
-  // buildConcept = index into the `concepts` array below (which of the 5
-  // core ideas is on screen right now). conceptUnlocked is a parallel array
-  // of booleans — concept 0 starts unlocked, every later one unlocks only
-  // once its own countdown timer (conceptTimer) finishes, which forces a
-  // minimum reading time instead of letting students rapid-click through.
+  // buildConcept = index into the `concepts` array below (which of the 8
+  // core ideas is on screen right now — 3 brand-new foundations followed by
+  // the original 5 selector/cascade concepts). conceptUnlocked is a parallel
+  // array of booleans — concept 0 starts unlocked, every later one unlocks
+  // only once its own countdown timer (conceptTimer) finishes, which forces
+  // a minimum reading time instead of letting students rapid-click through.
   // buildMode toggles the Plain-English vs Technical phrasing of whichever
   // concept is currently showing.
   const [buildConcept, setBuildConcept] = useState(0);
-  const [conceptUnlocked, setConceptUnlocked] = useState([true, false, false, false, false]);
+  const [conceptUnlocked, setConceptUnlocked] = useState([
+    true, false, false, false, false, false, false, false,
+  ]);
   const [conceptTimer, setConceptTimer] = useState(0);
   const [buildMode, setBuildMode] = useState("plain");
 
@@ -122,15 +146,35 @@ export default function Unit3_1({ student, onUnitComplete }) {
   const animRef = useRef(null);
   const [animFrame, setAnimFrame] = useState(0);
 
-  // ── CONTENT: the five Build-stage concepts ─────────────────────────────────
+  // ── CONTENT: the eight Build-stage concepts ────────────────────────────────
   // Each object feeds renderBuild() directly: `title` is the pill label and
   // heading, `plain`/`technical` are the two phrasings shown via the toggle,
   // `unlock` is how many seconds the NEXT concept stays locked for (forces a
   // minimum dwell time on each idea before the student can race ahead).
+  // Concepts 0-2 are brand-new scaffolding for students who have only seen
+  // HTML so far; concepts 3-7 are the original selector/cascade content.
   const concepts = [
     {
+      title: "What Is CSS, and Why Do We Need It?",
+      plain: "Look at every page you've built so far in HTML: black text, white background, no colours, links underlined blue, nothing centred. That's not a bug — HTML was never designed to control how things LOOK. HTML only describes WHAT is on the page (\"this is a heading\", \"this is a button\"). CSS — Cascading Style Sheets — is the missing half: a separate language whose entire job is appearance — colour, spacing, fonts, layout, even animation. The exact same HTML can look like a plain text document or a polished app, purely depending on what CSS is attached to it.",
+      technical: "CSS enforces a principle called separation of concerns: HTML defines document structure and meaning (semantics), CSS defines presentation, and — later in this course — JavaScript defines behaviour. Keeping these separate means one HTML document can be completely restyled (a new theme, a new layout, even a different device size) without touching a single tag.",
+      unlock: 8,
+    },
+    {
+      title: "Three Ways to Write CSS",
+      plain: "There are exactly three places CSS can live. INLINE: written directly inside one element's style=\"...\" attribute — affects only that one element. INTERNAL (a.k.a. embedded): written inside a <style> tag in the <head> of the HTML file — affects every matching element on that one page. EXTERNAL: written in a completely separate .css file, connected to the HTML with a <link> tag — reusable across every page of an entire website. Real sites almost always use external CSS: one file can style hundreds of pages, and changing one line updates all of them at once.",
+      technical: "Inline styles (style=\"color:red\") apply to a single element and carry very high specificity (second only to !important). Internal styles live inside <style> in <head> and apply page-wide, recompiled on every page load. External styles are loaded via <link rel=\"stylesheet\" href=\"styles.css\">, are cached by the browser across page visits, and are the only one of the three that scales to a multi-page site without duplicating code.",
+      unlock: 9,
+    },
+    {
+      title: "Anatomy of One CSS Rule",
+      plain: "Every CSS rule has the exact same shape, no matter how complicated it looks: a SELECTOR (who gets styled), then curly braces { }, and inside them one or more DECLARATIONS — each a PROPERTY: VALUE pair ending in a semicolon. For example: p { color: blue; } reads as \"select every <p>, and set its color property to the value blue.\" Learn to see this shape and every CSS rule you'll ever encounter — simple or huge — instantly becomes readable.",
+      technical: "Formally: selector { property: value; property: value; } — the selector is matched against the DOM tree, and every matched element receives every declaration inside the braces. A declaration is always property : value ;  — omitting the trailing semicolon on the LAST declaration is legal but becomes a bug magnet the moment a new declaration is added after it.",
+      unlock: 8,
+    },
+    {
       title: "Selectors — How CSS Finds Elements",
-      plain: "A CSS rule starts with a SELECTOR — basically \"who am I talking to?\". Want to style every paragraph? Use p. Just one special box? Give it an id and use #thatId. A whole group of boxes that share a look? Give them all the same class and use .thatClass.",
+      plain: "Now that you know WHERE css rules are written and what SHAPE they have, let's look at the SELECTOR part more closely — \"who am I talking to?\". Want to style every paragraph? Use p. Just one special box? Give it an id and use #thatId. A whole group of boxes that share a look? Give them all the same class and use .thatClass.",
       technical: "A selector is a pattern that matches one or more elements in the document. The three most common types are the type/element selector (p), the class selector (.card), and the ID selector (#header) — each progressively narrower and, as we'll see, progressively more powerful in the cascade.",
       unlock: 8,
     },
@@ -160,9 +204,54 @@ export default function Unit3_1({ student, onUnitComplete }) {
     },
   ];
 
-  // ── CONTENT: Quiz bank — 10 questions, escalating hints, never reveals
-  // the answer outright (Rule 6 of the lesson template). ───────────────────
+  // ── CONTENT: Quiz bank — 13 questions, escalating hints, never reveals
+  // the answer outright (Rule 6 of the lesson template). Questions 1-3 are
+  // new and test the CSS foundations (concepts 0-2); questions 4-13 are the
+  // original selector/cascade bank (concepts 3-7), renumbered. ─────────────
   const quizQuestions = [
+    {
+      q: "What is CSS actually responsible for, that plain HTML cannot do on its own?",
+      options: [
+        "Adding more headings and paragraphs to a page",
+        "Controlling how the page LOOKS — colour, spacing, fonts, layout",
+        "Storing data in a database",
+        "Making a webpage load faster on slow internet only",
+      ],
+      answer: 1,
+      hints: [
+        "Think back to every page you've built so far in HTML — what did they all have in common?",
+        "HTML pages with no CSS are always black text on a white background, with no custom colours or layout.",
+        "CSS is the language whose entire job is appearance — colour, fonts, spacing, layout, and animation — separate from HTML's job of describing structure and content.",
+      ],
+      explanation: "CSS (Cascading Style Sheets) handles presentation — colour, spacing, fonts, and layout — while HTML only describes structure and content. They are deliberately separate languages with separate jobs.",
+    },
+    {
+      q: "Which of the three ways to write CSS is reusable across MANY pages of a website from a single file?",
+      options: [
+        "Inline CSS (style=\"...\" on one element)",
+        "Internal/embedded CSS (a <style> tag in <head>)",
+        "External CSS (a separate .css file linked with <link>)",
+        "None of them can be reused across pages",
+      ],
+      answer: 2,
+      hints: [
+        "Inline only affects the one element it's written on. Internal only affects the one page it's written in.",
+        "You need something that lives OUTSIDE any single HTML file, so many files can point to it at once.",
+        "External CSS — a separate .css file connected with <link rel=\"stylesheet\" href=\"...\">  — can be linked from every page on a site, so one file styles them all.",
+      ],
+      explanation: "External CSS lives in its own .css file and is linked into as many HTML pages as needed with <link>. That's why real-world sites use it almost exclusively — one edit updates every linked page.",
+    },
+    {
+      q: "In the CSS rule  p { color: blue; }  — what is \"color\" called?",
+      options: ["The selector", "The property", "The value", "The combinator"],
+      answer: 1,
+      hints: [
+        "Every CSS declaration follows the shape  property : value ;",
+        "\"p\" is the selector (who gets styled), and \"blue\" is the value. That leaves one part unnamed.",
+        "\"color\" is the PROPERTY — the specific aspect of the element being changed. \"blue\" is the VALUE assigned to it.",
+      ],
+      explanation: "A CSS declaration is property: value; — here \"color\" is the property being set, and \"blue\" is the value it's being set to. \"p\" before the braces is the selector.",
+    },
     {
       q: "Which selector targets every single <p> element on the page, no matter what class or ID it has?",
       options: ["#paragraph", ".p", "p", "*p"],
@@ -443,30 +532,44 @@ export default function Unit3_1({ student, onUnitComplete }) {
   const stageNames = ["Spark", "Build", "See It", "Try It", "Challenge", "Quiz"];
 
   // ── SPARK ─────────────────────────────────────────────────────────────────
-  // Curiosity hook before any teaching: a relatable "which rule wins?"
-  // scenario the student predicts on, before we explain specificity at all.
+  // Curiosity hook before any teaching, rebuilt for total beginners: the
+  // SAME html markup, rendered two completely different ways. The student
+  // predicts WHY before we ever say the word "CSS" out loud — this directly
+  // sets up Build concept 0 (what CSS is and why we need it).
   const renderSpark = () => (
     <div style={s.card}>
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={{ fontSize: "2.6rem", marginBottom: 10 }}>⚔️</div>
-        <div style={s.h2}>Two CSS rules both want to colour the SAME heading.</div>
-        <div style={{ ...s.p, textAlign: "center" }}>
-          Rule A: <code style={{ color: "#7dd3fc" }}>h1 {"{"} color: red; {"}"}</code><br />
-          Rule B: <code style={{ color: "#7dd3fc" }}>#title {"{"} color: blue; {"}"}</code>
+      <div style={{ textAlign: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: "2.6rem", marginBottom: 10 }}>🎭</div>
+        <div style={s.h2}>Same exact HTML. Two completely different looks.</div>
+      </div>
+
+      {/* Visual side-by-side mock-up: identical markup, two renders. This
+          IS the visual hook — no need to describe it in words first. */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+        <div style={{ flex: "1 1 150px", background: "#fff", borderRadius: 10, padding: "14px", color: "#000", fontFamily: "Times New Roman, serif" }}>
+          <div style={{ fontSize: "0.95rem", fontWeight: 400, marginBottom: 6 }}>Welcome</div>
+          <div style={{ fontSize: "0.74rem", marginBottom: 8 }}>Click below to continue.</div>
+          <div style={{ textDecoration: "underline", color: "#00f", fontSize: "0.74rem" }}>Continue</div>
         </div>
-        <div style={{ ...s.p, textAlign: "center" }}>
-          <strong style={{ color: "#f1f5f9" }}>The heading has id="title". Which colour actually shows up?</strong>
+        <div style={{ flex: "1 1 150px", background: "linear-gradient(135deg,#38bdf8,#818cf8)", borderRadius: 10, padding: "14px", color: "#fff", textAlign: "center" }}>
+          <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>Welcome 👋</div>
+          <div style={{ fontSize: "0.74rem", marginBottom: 10, opacity: 0.9 }}>Click below to continue.</div>
+          <div style={{ background: "#fff", color: "#1e293b", borderRadius: 8, padding: "6px 0", fontSize: "0.76rem", fontWeight: 700 }}>Continue</div>
         </div>
       </div>
+      <div style={{ ...s.p, textAlign: "center" }}>
+        <strong style={{ color: "#f1f5f9" }}>Both boxes use the exact same HTML</strong> — a heading, a paragraph, and a link. So why do they look nothing alike?
+      </div>
+
       {!sparkSubmitted ? (
         <>
           <div style={s.h3}>Your guess: pick the closest answer</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8, marginBottom: 12 }}>
             {[
-              "Red — Rule A was probably written first",
-              "Blue — an ID selector outranks a plain tag selector",
-              "Both — the browser blends them into purple",
-              "Neither — conflicting rules cancel out to black",
+              "The HTML must secretly be different",
+              "Something extra — not HTML — was added to control the look",
+              "Different browsers just render HTML differently, always",
+              "The second one isn't really a webpage",
             ].map((opt, i) => (
               <div key={i} onClick={() => setSparkGuess(opt)} style={{
                 background: sparkGuess === opt ? "#0f2942" : "#0f172a",
@@ -481,9 +584,9 @@ export default function Unit3_1({ student, onUnitComplete }) {
         <div style={{ background: "#0f2942", borderRadius: 12, padding: "16px" }}>
           <div style={{ color: "#4ade80", fontWeight: 700, marginBottom: 6 }}>✅ Let's find out!</div>
           <div style={s.p}>
-            {sparkGuess.startsWith("Blue")
-              ? "🎯 Exactly right! #title is an ID selector, and ID selectors always outrank plain tag selectors like h1 — no matter which rule was written first. The heading turns blue."
-              : "The real answer: #title is an ID selector, which always outranks a plain tag selector like h1 in the specificity points system — regardless of write order. The heading turns blue, not red."}
+            {sparkGuess.startsWith("Something")
+              ? "🎯 Exactly right! The HTML in both boxes is identical. The colours, the gradient, the centring, the button shape — none of that is HTML's job. That's CSS: a second language, layered on top of HTML, whose only job is appearance."
+              : "The real answer: the HTML in both boxes is 100% identical. What changed is CSS — a separate language layered on top of HTML whose entire job is appearance (colour, spacing, fonts, layout). Same content, different CSS, completely different look."}
           </div>
           <button style={s.btn()} onClick={() => setStage(1)}>Start Learning →</button>
         </div>
@@ -492,7 +595,7 @@ export default function Unit3_1({ student, onUnitComplete }) {
   );
 
   // ── BUILD ─────────────────────────────────────────────────────────────────
-  // Five concepts, each gated by a countdown timer, each switchable between
+  // Eight concepts, each gated by a countdown timer, each switchable between
   // Plain-English and Technical phrasing, each with a small live animation.
   const renderBuild = () => (
     <div>
@@ -657,10 +760,19 @@ export default function Unit3_1({ student, onUnitComplete }) {
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "2.6rem", marginBottom: 12 }}>🏆</div>
           <div style={s.h2}>Unit 3.1 Complete!</div>
-          <div style={s.p}>{student?.name ? `Nice work, ${student.name}.` : "Nice work."} You can now read any CSS rule and predict, with confidence, exactly which one will actually apply.</div>
+          <div style={s.p}>{student?.name ? `Nice work, ${student.name}.` : "Nice work."} You can now explain what CSS is for, where it's written, and read any CSS rule to predict exactly which one will actually apply.</div>
           <div style={{ background: "#0f172a", borderRadius: 12, padding: "14px", margin: "14px 0", textAlign: "left" }}>
             <div style={{ color: "#4ade80", fontWeight: 700, marginBottom: 8 }}>What you learned:</div>
-            {["Selector types — tag, class, ID", "Combinators — descendant, child, grouping", "Specificity — the points system that breaks ties", "The cascade — source order, inheritance, !important", "Why it matters for maintainable CSS"].map((l, i) => (
+            {[
+              "What CSS is, and why HTML alone can't control appearance",
+              "The three ways to write CSS — inline, internal, external",
+              "The anatomy of a CSS rule — selector, property, value",
+              "Selector types — tag, class, ID",
+              "Combinators — descendant, child, grouping",
+              "Specificity — the points system that breaks ties",
+              "The cascade — source order, inheritance, !important",
+              "Why it matters for maintainable CSS",
+            ].map((l, i) => (
               <div key={i} style={{ color: "#94a3b8", fontSize: "0.82rem", padding: "4px 0" }}>✅ {l}</div>
             ))}
           </div>
@@ -735,7 +847,7 @@ export default function Unit3_1({ student, onUnitComplete }) {
   return (
     <div style={s.wrap}>
       <div style={s.topBar}>
-        <div style={s.topTitle}>Unit 3.1 — Selectors & the Cascade</div>
+        <div style={s.topTitle}>Unit 3.1 — What Is CSS? Selectors & the Cascade</div>
         <div style={s.stagePills}>{stageNames.map((name, i) => <span key={i} style={s.pill(stage === i, stage > i)}>{name}</span>)}</div>
       </div>
       {stage === 0 && (
@@ -759,16 +871,86 @@ export default function Unit3_1({ student, onUnitComplete }) {
 }
 
 // ── CONCEPT ANIMATIONS — one tiny illustration per Build-stage concept ─────
-// `index` picks which of the 5 concepts to illustrate; `frame` (0-59, looping)
+// `index` picks which of the 8 concepts to illustrate; `frame` (0-59, looping)
 // drives simple position/opacity oscillation so each animation feels alive
-// without needing any external animation library.
+// without needing any external animation library. Indices 0-2 are the new
+// foundational concepts; indices 3-7 are the original selector/cascade ones
+// (shifted down by 3 from the previous version of this file).
 function ConceptAnimation({ index, frame }) {
   const pos = (frame % 40) / 40; // 0→1 sawtooth, reused by every animation below
   const base = { width: "100%", height: "100%", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" };
 
-  // Concept 0 — Selectors: a tag/class/ID each glow in turn to show the
-  // three basic selector "categories" cycling.
+  // Concept 0 — What is CSS: the same tiny "card" flips between an unstyled
+  // look and a styled look, visually repeating the Spark-stage hook.
   if (index === 0) {
+    const styled = pos >= 0.5;
+    return (
+      <div style={base}>
+        <div style={{
+          width: 130, padding: "14px", borderRadius: styled ? 12 : 0, textAlign: styled ? "center" : "left",
+          background: styled ? "linear-gradient(135deg,#38bdf8,#818cf8)" : "#fff", color: styled ? "#fff" : "#000",
+          fontFamily: styled ? "'Segoe UI',sans-serif" : "Times New Roman, serif", transition: "all 0.4s",
+        }}>
+          <div style={{ fontWeight: styled ? 800 : 400, fontSize: "0.8rem" }}>Hello</div>
+          <div style={{ fontSize: "0.62rem", marginTop: 4, opacity: styled ? 0.9 : 1 }}>same HTML</div>
+        </div>
+        <div style={{ position: "absolute", bottom: 6, fontSize: "0.62rem", color: "#64748b" }}>{styled ? "with CSS" : "no CSS"}</div>
+      </div>
+    );
+  }
+
+  // Concept 1 — Three ways to write CSS: cycles a highlight through three
+  // little code cards representing inline / internal / external.
+  if (index === 1) {
+    const which = Math.floor(pos * 3) % 3;
+    const items = [
+      ["inline", 'style="color:red"', "#fb923c"],
+      ["internal", "<style>...</style>", "#38bdf8"],
+      ["external", "<link href=styles.css>", "#4ade80"],
+    ];
+    return (
+      <div style={base}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.map(([label, code, color], i) => (
+            <div key={label} style={{
+              display: "flex", gap: 8, alignItems: "center", padding: "5px 10px", borderRadius: 8,
+              background: which === i ? color + "22" : "#1e293b", border: which === i ? `2px solid ${color}` : "1px dashed #334155", transition: "all 0.3s",
+            }}>
+              <span style={{ fontSize: "0.66rem", fontWeight: 700, color: which === i ? color : "#475569", width: 52 }}>{label}</span>
+              <span style={{ fontFamily: "monospace", fontSize: "0.62rem", color: which === i ? "#e2e8f0" : "#475569" }}>{code}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 2 — Anatomy of a rule: labels the three parts of  p { color: blue; }
+  // one at a time as the loop progresses.
+  if (index === 2) {
+    const part = Math.floor(pos * 3) % 3; // 0 selector, 1 property, 2 value
+    const labels = ["selector", "property", "value"];
+    const colors = ["#4ade80", "#38bdf8", "#fb923c"];
+    return (
+      <div style={base}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: "monospace", fontSize: "0.95rem", marginBottom: 10 }}>
+            <span style={{ color: part === 0 ? colors[0] : "#475569", fontWeight: part === 0 ? 800 : 400 }}>p</span>
+            <span style={{ color: "#475569" }}> {"{ "}</span>
+            <span style={{ color: part === 1 ? colors[1] : "#475569", fontWeight: part === 1 ? 800 : 400 }}>color</span>
+            <span style={{ color: "#475569" }}>: </span>
+            <span style={{ color: part === 2 ? colors[2] : "#475569", fontWeight: part === 2 ? 800 : 400 }}>blue</span>
+            <span style={{ color: "#475569" }}>{"; }"}</span>
+          </div>
+          <div style={{ fontSize: "0.68rem", fontWeight: 700, color: colors[part] }}>↑ this part is the {labels[part]}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 3 — Selectors: a tag/class/ID each glow in turn to show the
+  // three basic selector "categories" cycling.
+  if (index === 3) {
     const which = Math.floor(pos * 3) % 3;
     const labels = [["p", "#38bdf8"], [".card", "#a78bfa"], ["#header", "#4ade80"]];
     return (
@@ -786,9 +968,9 @@ function ConceptAnimation({ index, frame }) {
     );
   }
 
-  // Concept 1 — Combinators: an arrow "descends" through nested boxes to
+  // Concept 4 — Combinators: an arrow "descends" through nested boxes to
   // illustrate nav → a being matched at depth.
-  if (index === 1) {
+  if (index === 4) {
     const depth = Math.floor(pos * 3);
     return (
       <div style={base}>
@@ -801,9 +983,9 @@ function ConceptAnimation({ index, frame }) {
     );
   }
 
-  // Concept 2 — Specificity: a simple bar chart, tag < class < ID, with the
+  // Concept 5 — Specificity: a simple bar chart, tag < class < ID, with the
   // currently-"flashing" bar cycling to draw the eye to the comparison.
-  if (index === 2) {
+  if (index === 5) {
     const flash = Math.floor(pos * 3) % 3;
     const bars = [["tag", 30, "#94a3b8"], ["class", 60, "#38bdf8"], ["ID", 95, "#4ade80"]];
     return (
@@ -820,9 +1002,9 @@ function ConceptAnimation({ index, frame }) {
     );
   }
 
-  // Concept 3 — Cascade/order: two identical-specificity boxes, with the
+  // Concept 6 — Cascade/order: two identical-specificity boxes, with the
   // "later" one's checkmark blinking on to show it winning by source order.
-  if (index === 3) {
+  if (index === 6) {
     return (
       <div style={base}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -833,7 +1015,271 @@ function ConceptAnimation({ index, frame }) {
     );
   }
 
-  // Concept 4 — Why it matters: a messy stack of !important shrinking down
+  // Concept 7 — Why it matters: a messy stack of !important shrinking down
+  // to one clean, well-scoped rule.
+  return (
+    <div style={base}>
+      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+        <div style={{ textAlign: "center", opacity: pos < 0.5 ? 1 : 0.35, transition: "opacity 0.3s" }}>
+          <div style={{ fontSize: "1.4rem" }}>😵</div>
+          <div style={{ fontSize: "0.58rem", color: "#94a3b8" }}>!important ×5</div>
+        </div>
+        <div style={{ fontSize: "1.1rem", color: "#475569" }}>→</div>
+        <div style={{ textAlign: "center", opacity: pos >= 0.5 ? 1 : 0.35, transition: "opacity 0.3s" }}>
+          <div style={{ fontSize: "1.4rem" }}>😌</div>
+          <div style={{ fontSize: "0.58rem", color: "#94a3b8" }}>one clean .class</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TAG MATCH (shared minigame pattern, reused across the course) ─────────
+// Student taps a "code" item, then a "meaning" item; if they form a real
+// pair, both lock in green. A shuffled copy of the meanings list (computed
+// once via useRef so it doesn't re-shuffle on every re-render) keeps the
+// matching non-trivial instead of being in the same order as the codes.
+function TagMatch({ pairs, onDone }) {
+  const [matched, setMatched] = useState({});
+  const [selected, setSelected] = useState(null);
+  const [wrong, setWrong] = useState(null);
+  const shuffledMeanings = useRef([...pairs].sort(() => Math.random() - 0.5)).current;
+
+  const handleCode = (code) => { if (!matched[code]) setSelected({ type: "code", value: code }); };
+  const handleMeaning = (meaning) => {
+    if (selected?.type === "code") {
+      const correct = pairs.find((p) => p.code === selected.value)?.meaning === meaning;
+      if (correct) {
+        const newMatched = { ...matched, [selected.value]: meaning };
+        setMatched(newMatched);
+        setSelected(null);
+        if (Object.keys(newMatched).length === pairs.length) onDone();
+      } else {
+        setWrong(meaning);
+        setTimeout(() => { setWrong(null); setSelected(null); }, 800);
+      }
+    } else {
+      setSelected({ type: "meaning", value: meaning });
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ flex: "1 1 140px" }}>
+        <div style={{ color: "#64748b", fontSize: "0.7rem", fontWeight: 700, marginBottom: 8 }}>SELECTORS</div>
+        {pairs.map((p) => (
+          <div key={p.code} onClick={() => handleCode(p.code)} style={{
+            background: matched[p.code] ? "#14532d33" : selected?.value === p.code ? "#0f2942" : "#0f172a",
+            border: matched[p.code] ? "1px solid #4ade8044" : selected?.value === p.code ? "2px solid #38bdf8" : "1px solid #334155",
+            borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: matched[p.code] ? "default" : "pointer",
+            fontFamily: "monospace", fontSize: "0.76rem", color: matched[p.code] ? "#4ade80" : "#e2e8f0",
+          }}>{matched[p.code] ? "✅ " : ""}{p.code}</div>
+        ))}
+      </div>
+      <div style={{ flex: "1 1 140px" }}>
+        <div style={{ color: "#64748b", fontSize: "0.7rem", fontWeight: 700, marginBottom: 8 }}>MEANING</div>
+        {shuffledMeanings.map((p) => {
+          const isUsed = Object.values(matched).includes(p.meaning);
+          return (
+            <div key={p.meaning} onClick={() => !isUsed && handleMeaning(p.meaning)} style={{
+              background: isUsed ? "#14532d33" : wrong === p.meaning ? "#450a0a" : "#0f172a",
+              border: isUsed ? "1px solid #4ade8044" : wrong === p.meaning ? "2px solid #ef4444" : "1px solid #334155",
+              borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: isUsed ? "default" : "pointer",
+              fontSize: "0.78rem", color: isUsed ? "#4ade80" : "#e2e8f0",
+            }}>{isUsed ? "✅ " : ""}{p.meaning}</div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── BUG HUNT (shared minigame pattern, reused across the course) ──────────
+// Student taps lines until they tap the one flagged `buggy: true`; wrong
+// taps flash red briefly, the correct tap reveals the "why" explanation and
+// reports completion via onDone().
+function BugHunt({ lines, onDone }) {
+  const [revealed, setRevealed] = useState(false);
+  const [wrongTap, setWrongTap] = useState(null);
+
+  function tap(line, i) {
+    if (revealed) return;
+    if (line.buggy) { setRevealed(true); onDone(); }
+    else { setWrongTap(i); setTimeout(() => setWrongTap(null), 600); }
+  }
+
+  return (
+    <div>
+      {lines.map((line, i) => (
+        <div key={i} onClick={() => tap(line, i)} style={{
+          background: revealed && line.buggy ? "#14532d33" : wrongTap === i ? "#450a0a" : "#0f172a",
+          border: revealed && line.buggy ? "1px solid #4ade8044" : wrongTap === i ? "2px solid #ef4444" : "1px solid #334155",
+          borderRadius: 10, padding: "10px 14px", marginBottom: 8, cursor: revealed ? "default" : "pointer",
+          fontFamily: "monospace", fontSize: "0.76rem", color: revealed && line.buggy ? "#4ade80" : "#e2e8f0",
+        }}>
+          {revealed && line.buggy ? "🐛 " : ""}{line.text}
+        </div>
+      ))}
+      {revealed && (
+        <div style={{ background: "#1c1c0f", border: "1px solid #ca8a0455", borderRadius: 10, padding: "12px", marginTop: 10 }}>
+          <div style={{ color: "#fbbf24", fontWeight: 700, fontSize: "0.8rem", marginBottom: 4 }}>Found it!</div>
+          <div style={{ color: "#fde68a", fontSize: "0.82rem" }}>{lines.find((l) => l.buggy)?.why}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+style>
+    </div>
+  );
+}
+
+// ── CONCEPT ANIMATIONS — one tiny illustration per Build-stage concept ─────
+// `index` picks which of the 8 concepts to illustrate; `frame` (0-59, looping)
+// drives simple position/opacity oscillation so each animation feels alive
+// without needing any external animation library. Indices 0-2 are the new
+// foundational concepts; indices 3-7 are the original selector/cascade ones
+// (shifted down by 3 from the previous version of this file).
+function ConceptAnimation({ index, frame }) {
+  const pos = (frame % 40) / 40; // 0→1 sawtooth, reused by every animation below
+  const base = { width: "100%", height: "100%", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" };
+
+  // Concept 0 — What is CSS: the same tiny "card" flips between an unstyled
+  // look and a styled look, visually repeating the Spark-stage hook.
+  if (index === 0) {
+    const styled = pos >= 0.5;
+    return (
+      <div style={base}>
+        <div style={{
+          width: 130, padding: "14px", borderRadius: styled ? 12 : 0, textAlign: styled ? "center" : "left",
+          background: styled ? "linear-gradient(135deg,#38bdf8,#818cf8)" : "#fff", color: styled ? "#fff" : "#000",
+          fontFamily: styled ? "'Segoe UI',sans-serif" : "Times New Roman, serif", transition: "all 0.4s",
+        }}>
+          <div style={{ fontWeight: styled ? 800 : 400, fontSize: "0.8rem" }}>Hello</div>
+          <div style={{ fontSize: "0.62rem", marginTop: 4, opacity: styled ? 0.9 : 1 }}>same HTML</div>
+        </div>
+        <div style={{ position: "absolute", bottom: 6, fontSize: "0.62rem", color: "#64748b" }}>{styled ? "with CSS" : "no CSS"}</div>
+      </div>
+    );
+  }
+
+  // Concept 1 — Three ways to write CSS: cycles a highlight through three
+  // little code cards representing inline / internal / external.
+  if (index === 1) {
+    const which = Math.floor(pos * 3) % 3;
+    const items = [
+      ["inline", 'style="color:red"', "#fb923c"],
+      ["internal", "<style>...</style>", "#38bdf8"],
+      ["external", "<link href=styles.css>", "#4ade80"],
+    ];
+    return (
+      <div style={base}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.map(([label, code, color], i) => (
+            <div key={label} style={{
+              display: "flex", gap: 8, alignItems: "center", padding: "5px 10px", borderRadius: 8,
+              background: which === i ? color + "22" : "#1e293b", border: which === i ? `2px solid ${color}` : "1px dashed #334155", transition: "all 0.3s",
+            }}>
+              <span style={{ fontSize: "0.66rem", fontWeight: 700, color: which === i ? color : "#475569", width: 52 }}>{label}</span>
+              <span style={{ fontFamily: "monospace", fontSize: "0.62rem", color: which === i ? "#e2e8f0" : "#475569" }}>{code}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 2 — Anatomy of a rule: labels the three parts of  p { color: blue; }
+  // one at a time as the loop progresses.
+  if (index === 2) {
+    const part = Math.floor(pos * 3) % 3; // 0 selector, 1 property, 2 value
+    const labels = ["selector", "property", "value"];
+    const colors = ["#4ade80", "#38bdf8", "#fb923c"];
+    return (
+      <div style={base}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: "monospace", fontSize: "0.95rem", marginBottom: 10 }}>
+            <span style={{ color: part === 0 ? colors[0] : "#475569", fontWeight: part === 0 ? 800 : 400 }}>p</span>
+            <span style={{ color: "#475569" }}> {"{ "}</span>
+            <span style={{ color: part === 1 ? colors[1] : "#475569", fontWeight: part === 1 ? 800 : 400 }}>color</span>
+            <span style={{ color: "#475569" }}>: </span>
+            <span style={{ color: part === 2 ? colors[2] : "#475569", fontWeight: part === 2 ? 800 : 400 }}>blue</span>
+            <span style={{ color: "#475569" }}>{"; }"}</span>
+          </div>
+          <div style={{ fontSize: "0.68rem", fontWeight: 700, color: colors[part] }}>↑ this part is the {labels[part]}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 3 — Selectors: a tag/class/ID each glow in turn to show the
+  // three basic selector "categories" cycling.
+  if (index === 3) {
+    const which = Math.floor(pos * 3) % 3;
+    const labels = [["p", "#38bdf8"], [".card", "#a78bfa"], ["#header", "#4ade80"]];
+    return (
+      <div style={base}>
+        <div style={{ display: "flex", gap: 16 }}>
+          {labels.map(([txt, color], i) => (
+            <div key={txt} style={{
+              padding: "8px 14px", borderRadius: 8, fontFamily: "monospace", fontWeight: 700, fontSize: "0.8rem",
+              background: which === i ? color + "22" : "#1e293b", border: which === i ? `2px solid ${color}` : "1px dashed #334155",
+              color: which === i ? color : "#475569", transition: "all 0.3s",
+            }}>{txt}</div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 4 — Combinators: an arrow "descends" through nested boxes to
+  // illustrate nav → a being matched at depth.
+  if (index === 4) {
+    const depth = Math.floor(pos * 3);
+    return (
+      <div style={base}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+          {["<nav>", "  <ul>", "    <a> link </a>"].map((line, i) => (
+            <div key={i} style={{ paddingLeft: i * 14, fontFamily: "monospace", fontSize: "0.7rem", color: depth >= i ? "#38bdf8" : "#475569", fontWeight: depth === i ? 700 : 400, transition: "color 0.3s" }}>{line}</div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 5 — Specificity: a simple bar chart, tag < class < ID, with the
+  // currently-"flashing" bar cycling to draw the eye to the comparison.
+  if (index === 5) {
+    const flash = Math.floor(pos * 3) % 3;
+    const bars = [["tag", 30, "#94a3b8"], ["class", 60, "#38bdf8"], ["ID", 95, "#4ade80"]];
+    return (
+      <div style={base}>
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-end", height: 80 }}>
+          {bars.map(([label, h, color], i) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <div style={{ width: 28, height: h * (flash === i ? 1 : 0.85), background: color, borderRadius: 4, transition: "height 0.3s", opacity: flash === i ? 1 : 0.6 }} />
+              <div style={{ fontSize: "0.62rem", color: "#94a3b8", marginTop: 4 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 6 — Cascade/order: two identical-specificity boxes, with the
+  // "later" one's checkmark blinking on to show it winning by source order.
+  if (index === 6) {
+    return (
+      <div style={base}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, padding: "6px 12px", fontSize: "0.68rem", color: "#64748b" }}>Rule written first</div>
+          <div style={{ background: pos > 0.5 ? "#14532d33" : "#1e293b", border: pos > 0.5 ? "1px solid #4ade80" : "1px solid #334155", borderRadius: 6, padding: "6px 12px", fontSize: "0.68rem", color: pos > 0.5 ? "#4ade80" : "#64748b", transition: "all 0.3s" }}>Rule written LAST {pos > 0.5 ? "✅ wins" : ""}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Concept 7 — Why it matters: a messy stack of !important shrinking down
   // to one clean, well-scoped rule.
   return (
     <div style={base}>
