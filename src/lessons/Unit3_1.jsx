@@ -31,9 +31,11 @@
 //    Stage 0  SPARK      — a curiosity question BEFORE any teaching: the
 //                           SAME html, shown two ways, predict why they
 //                           look different (predict-then-learn).
-//    Stage 1  BUILD      — EIGHT concepts now, each timer-gated so students
-//                           can't speed-skip, each with a Plain-English ⇄
-//                           Technical toggle AND a small live animation:
+//    Stage 1  BUILD      — EIGHT concepts, freely navigable in any order
+//                           (an earlier countdown-timer gate was removed —
+//                           it slowed students down without helping them
+//                           learn), each with a Plain-English ⇄ Technical
+//                           toggle AND a small live animation:
 //                             0. What is CSS, and why do we need it?
 //                             1. Three ways to write CSS (inline/internal/external)
 //                             2. Anatomy of one CSS rule
@@ -88,17 +90,14 @@ export default function Unit3_1({ student, onUnitComplete }) {
   // ── BUILD stage state ──────────────────────────────────────────────────────
   // buildConcept = index into the `concepts` array below (which of the 8
   // core ideas is on screen right now — 3 brand-new foundations followed by
-  // the original 5 selector/cascade concepts). conceptUnlocked is a parallel
-  // array of booleans — concept 0 starts unlocked, every later one unlocks
-  // only once its own countdown timer (conceptTimer) finishes, which forces
-  // a minimum reading time instead of letting students rapid-click through.
-  // buildMode toggles the Plain-English vs Technical phrasing of whichever
-  // concept is currently showing.
+  // the original 5 selector/cascade concepts). There used to be a per-concept
+  // countdown timer that locked the next concept's pill until N seconds had
+  // passed — students found it slowed them down without actually helping
+  // them learn anything, so navigation between concepts is now completely
+  // free: every pill is clickable at any time, in any order. buildMode
+  // toggles the Plain-English vs Technical phrasing of whichever concept is
+  // currently showing.
   const [buildConcept, setBuildConcept] = useState(0);
-  const [conceptUnlocked, setConceptUnlocked] = useState([
-    true, false, false, false, false, false, false, false,
-  ]);
-  const [conceptTimer, setConceptTimer] = useState(0);
   const [buildMode, setBuildMode] = useState("plain");
 
   // ── SEE IT stage state ──────────────────────────────────────────────────────
@@ -137,20 +136,18 @@ export default function Unit3_1({ student, onUnitComplete }) {
   const [quizAttempts, setQuizAttempts] = useState(0);
   const [quizDone, setQuizDone] = useState(false);
 
-  // ── shared timer ref + looping animation frame ─────────────────────────────
-  // timerRef holds the interval ID for the Build-stage countdown so its
-  // cleanup function (in the effect below) can always clear the right timer,
-  // even across re-renders. animFrame just ticks upward forever while the
-  // student is on Build/SeeIt, driving the small CSS animations.
-  const timerRef = useRef(null);
+  // ── looping animation frame ─────────────────────────────────────────────────
+  // animFrame just ticks upward forever while the student is on Build/SeeIt,
+  // driving the small CSS animations (see the effect below and
+  // ConceptAnimation at the bottom of this file).
   const animRef = useRef(null);
   const [animFrame, setAnimFrame] = useState(0);
 
   // ── CONTENT: the eight Build-stage concepts ────────────────────────────────
   // Each object feeds renderBuild() directly: `title` is the pill label and
-  // heading, `plain`/`technical` are the two phrasings shown via the toggle,
-  // `unlock` is how many seconds the NEXT concept stays locked for (forces a
-  // minimum dwell time on each idea before the student can race ahead).
+  // heading, `plain`/`technical` are the two phrasings shown via the toggle.
+  // There is no `unlock`/timer field any more — navigation between concepts
+  // is completely free (see the BUILD stage state comment above for why).
   // Concepts 0-2 are brand-new scaffolding for students who have only seen
   // HTML so far; concepts 3-7 are the original selector/cascade content.
   const concepts = [
@@ -158,49 +155,41 @@ export default function Unit3_1({ student, onUnitComplete }) {
       title: "What Is CSS, and Why Do We Need It?",
       plain: "Look at every page you've built so far in HTML: black text, white background, no colours, links underlined blue, nothing centred. That's not a bug — HTML was never designed to control how things LOOK. HTML only describes WHAT is on the page (\"this is a heading\", \"this is a button\"). CSS — Cascading Style Sheets — is the missing half: a separate language whose entire job is appearance — colour, spacing, fonts, layout, even animation. The exact same HTML can look like a plain text document or a polished app, purely depending on what CSS is attached to it.",
       technical: "CSS enforces a principle called separation of concerns: HTML defines document structure and meaning (semantics), CSS defines presentation, and — later in this course — JavaScript defines behaviour. Keeping these separate means one HTML document can be completely restyled (a new theme, a new layout, even a different device size) without touching a single tag.",
-      unlock: 8,
     },
     {
       title: "Three Ways to Write CSS",
       plain: "There are exactly three places CSS can live. INLINE: written directly inside one element's style=\"...\" attribute — affects only that one element. INTERNAL (a.k.a. embedded): written inside a <style> tag in the <head> of the HTML file — affects every matching element on that one page. EXTERNAL: written in a completely separate .css file, connected to the HTML with a <link> tag — reusable across every page of an entire website. Real sites almost always use external CSS: one file can style hundreds of pages, and changing one line updates all of them at once.",
       technical: "Inline styles (style=\"color:red\") apply to a single element and carry very high specificity (second only to !important). Internal styles live inside <style> in <head> and apply page-wide, recompiled on every page load. External styles are loaded via <link rel=\"stylesheet\" href=\"styles.css\">, are cached by the browser across page visits, and are the only one of the three that scales to a multi-page site without duplicating code.",
-      unlock: 9,
     },
     {
       title: "Anatomy of One CSS Rule",
       plain: "Every CSS rule has the exact same shape, no matter how complicated it looks: a SELECTOR (who gets styled), then curly braces { }, and inside them one or more DECLARATIONS — each a PROPERTY: VALUE pair ending in a semicolon. For example: p { color: blue; } reads as \"select every <p>, and set its color property to the value blue.\" Learn to see this shape and every CSS rule you'll ever encounter — simple or huge — instantly becomes readable.",
       technical: "Formally: selector { property: value; property: value; } — the selector is matched against the DOM tree, and every matched element receives every declaration inside the braces. A declaration is always property : value ;  — omitting the trailing semicolon on the LAST declaration is legal but becomes a bug magnet the moment a new declaration is added after it.",
-      unlock: 8,
     },
     {
       title: "Selectors — How CSS Finds Elements",
       plain: "Now that you know WHERE css rules are written and what SHAPE they have, let's look at the SELECTOR part more closely — \"who am I talking to?\". Want to style every paragraph? Use p. Just one special box? Give it an id and use #thatId. A whole group of boxes that share a look? Give them all the same class and use .thatClass.",
       technical: "A selector is a pattern that matches one or more elements in the document. The three most common types are the type/element selector (p), the class selector (.card), and the ID selector (#header) — each progressively narrower and, as we'll see, progressively more powerful in the cascade.",
-      unlock: 8,
     },
     {
       title: "Combinators — Targeting Relationships, Not Just Tags",
       plain: "Selectors can combine. \"nav a\" means \"any <a> that lives ANYWHERE inside a <nav>\" (descendant). \"nav > a\" means \"only an <a> that is a DIRECT child of <nav>\" — a grandchild link wouldn't count. Comma-separating selectors like \"h1, h2\" just means \"apply this rule to BOTH\".",
       technical: "Combinators define relationships between selectors: the descendant combinator (a space, e.g. nav a) matches any depth of nesting; the child combinator (>, e.g. nav > a) matches only direct children; the comma is technically a selector LIST, not a combinator — it groups otherwise-unrelated selectors under one shared rule, avoiding repeated declarations.",
-      unlock: 9,
     },
     {
       title: "Specificity — Who Wins When Two Rules Collide",
       plain: "If two CSS rules both try to set the same property on the same element, the browser needs a tie-breaker. That tie-breaker is called SPECIFICITY, and it works like a points system: an ID is worth more points than a class, and a class is worth more points than a plain tag. Whoever scores higher wins — no matter which rule was written first.",
       technical: "Specificity is calculated as a 3-part tuple (IDs, classes/attributes/pseudo-classes, type-selectors/pseudo-elements), often written as (a,b,c). #header (1,0,0) always beats .nav-link (0,1,0), which always beats a (0,0,1) — compared left-to-right, like comparing version numbers digit by digit, not added as a single sum.",
-      unlock: 10,
     },
     {
       title: "The Cascade — Order, Inheritance & !important",
       plain: "If specificity ties exactly, the rule written LATER in the CSS file wins — that's the \"cascade\" part. Some properties (like color and font-family) also \"trickle down\" automatically from a parent to its children even with no rule at all — that's INHERITANCE. And !important is an emergency override switch that jumps to the very top of the priority list — powerful, but overusing it makes a stylesheet impossible to reason about.",
       technical: "When specificity ties, source order is the tie-breaker — later rules override earlier ones. Some CSS properties are inherited by default (color, font-family, line-height); others are not (margin, border, width). !important attached to a declaration overrides normal specificity/order rules entirely, and should be used sparingly — it's the reason large stylesheets become unmaintainable when overused.",
-      unlock: 10,
     },
     {
       title: "Why It Matters — Predictable, Maintainable Styling",
       plain: "Understanding the cascade is what separates \"I randomly add !important until it looks right\" from \"I know exactly why this rule won, and I can fix it cleanly\". It's the single biggest source of CSS confusion for beginners — and the easiest to fix once you actually understand the points system above.",
       technical: "Mastery of selector specificity and cascade order lets developers write minimal, targeted CSS instead of relying on !important escalation wars — a major contributor to unmaintainable stylesheets at scale. It's foundational for every CSS topic that follows in this module (colours/fonts/spacing, Flexbox, Grid all assume you can reason about which rule applies).",
-      unlock: 9,
     },
   ];
 
@@ -394,33 +383,9 @@ export default function Unit3_1({ student, onUnitComplete }) {
     },
   ];
 
-  // ── Concept unlock timer (Build stage) ─────────────────────────────────────
-  // While stage === 1 (Build), this effect resets conceptTimer to the current
-  // concept's required dwell time, then ticks it down once per second. When
-  // it hits zero it unlocks the NEXT concept's pill in the timeline above.
-  // The cleanup function clears the interval whenever buildConcept or stage
-  // changes (e.g. student navigates away), so no stray timers ever leak.
-  useEffect(() => {
-    if (stage !== 1) return;
-    const c = concepts[buildConcept];
-    setConceptTimer(c.unlock);
-    timerRef.current = setInterval(() => {
-      setConceptTimer((t) => {
-        if (t <= 1) {
-          clearInterval(timerRef.current);
-          setConceptUnlocked((prev) => {
-            const next = [...prev];
-            if (buildConcept + 1 < concepts.length) next[buildConcept + 1] = true;
-            return next;
-          });
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildConcept, stage]);
+  // NOTE: the old "concept unlock timer" effect that used to live here has
+  // been removed entirely (see the BUILD stage state comment above) — there
+  // is nothing left to gate, so no replacement effect is needed.
 
   // ── Looping animation frame (drives the small CSS animations in Build &
   // See-It) — just an ever-incrementing counter mod 60, recycled by every
@@ -502,7 +467,15 @@ export default function Unit3_1({ student, onUnitComplete }) {
   // feels like one consistent product, not four separately designed pages. ──
   const s = {
     wrap: { minHeight: "100vh", background: "linear-gradient(135deg,#0f172a 0%,#1e293b 100%)", color: "#e2e8f0", fontFamily: "'Segoe UI',sans-serif", padding: "0 0 60px" },
-    topBar: { background: "#0f172a", borderBottom: "1px solid #1e293b", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, flexWrap: "wrap", gap: 8 },
+    // NOTE: maxWidth + margin:"0 auto" added so the bar doesn't stretch
+    // edge-to-edge on wide desktop browsers — on a 1920px screen, a topbar
+    // with only a title on the left and a few pills on the right looked
+    // oddly spread out and "horizontally elongated". Capping the width and
+    // centering it makes it read as one tidy header instead of a thin
+    // full-width strip. position:"sticky" still works fine on a
+    // narrower, centered element — it sticks relative to the scroll
+    // container, not to its own width.
+    topBar: { background: "#0f172a", borderBottom: "1px solid #1e293b", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, flexWrap: "wrap", gap: 8, maxWidth: 760, margin: "0 auto", width: "100%" },
     topTitle: { color: "#38bdf8", fontWeight: 700, fontSize: "clamp(0.78rem,2.5vw,0.95rem)" },
     stagePills: { display: "flex", gap: 6, flexWrap: "wrap" },
     pill: (active, done) => ({
@@ -511,7 +484,14 @@ export default function Unit3_1({ student, onUnitComplete }) {
       color: done ? "#4ade80" : active ? "#0f172a" : "#64748b",
       border: done ? "1px solid #4ade8066" : "none", whiteSpace: "nowrap",
     }),
-    card: { background: "#1e293b", borderRadius: 16, padding: "20px 16px", margin: "20px 12px", border: "1px solid #334155" },
+    // NOTE: same fix as topBar above — maxWidth + margin:"0 auto" so every
+    // stage's content card reads as a comfortable, centered column on a
+    // wide desktop monitor instead of stretching the full browser width
+    // (which made paragraphs, code blocks, and quiz options look thin and
+    // overly elongated left-to-right). "width: calc(100% - 24px)" keeps
+    // the original 12px side gutters on small/mobile screens where
+    // maxWidth never actually kicks in.
+    card: { background: "#1e293b", borderRadius: 16, padding: "20px 16px", margin: "20px auto", maxWidth: 760, width: "calc(100% - 24px)", border: "1px solid #334155" },
     h2: { fontSize: "clamp(1.05rem,3vw,1.3rem)", fontWeight: 700, color: "#f1f5f9", marginBottom: 8 },
     h3: { fontSize: "0.95rem", fontWeight: 700, color: "#38bdf8", marginBottom: 10 },
     p: { color: "#94a3b8", fontSize: "0.86rem", lineHeight: 1.6, marginBottom: 10 },
@@ -595,42 +575,51 @@ export default function Unit3_1({ student, onUnitComplete }) {
   );
 
   // ── BUILD ─────────────────────────────────────────────────────────────────
-  // Eight concepts, each gated by a countdown timer, each switchable between
-  // Plain-English and Technical phrasing, each with a small live animation.
-  const renderBuild = () => (
-    <div>
-      <div style={{ display: "flex", overflowX: "auto", gap: 6, padding: "12px 12px 0" }}>
-        {concepts.map((c, i) => (
-          <button key={i} disabled={!conceptUnlocked[i]} onClick={() => { setBuildConcept(i); setBuildMode("plain"); }} style={{
-            flexShrink: 0, padding: "6px 12px", borderRadius: 99, border: "none", fontWeight: 600, fontSize: "0.72rem",
-            cursor: conceptUnlocked[i] ? "pointer" : "not-allowed",
-            background: buildConcept === i ? "#38bdf8" : conceptUnlocked[i] ? "#1e293b" : "#0f172a",
-            color: buildConcept === i ? "#0f172a" : conceptUnlocked[i] ? "#e2e8f0" : "#334155",
-          }}>{conceptUnlocked[i] ? `${i + 1}. ${c.title.split("—")[0].trim()}` : `🔒 Concept ${i + 1}`}</button>
-        ))}
-      </div>
-      <div style={s.card}>
-        <div style={s.h3}>{concepts[buildConcept].title}</div>
-        <div style={s.animBox}><ConceptAnimation index={buildConcept} frame={animFrame} /></div>
-        <div style={s.toggleRow}>
-          <button style={s.toggleBtn(buildMode === "plain")} onClick={() => setBuildMode("plain")}>💬 Plain English</button>
-          <button style={s.toggleBtn(buildMode === "tech")} onClick={() => setBuildMode("tech")}>🔬 Technical</button>
+  // Eight concepts, freely navigable (no countdown gate — see state comment
+  // above), each switchable between Plain-English and Technical phrasing,
+  // each with a small live animation. The "next" button names the actual
+  // concept coming up instead of a generic "Next Concept" label, so the
+  // student always knows what they're about to learn before they click.
+  const renderBuild = () => {
+    // Short version of the NEXT concept's title (before the em dash, if any)
+    // — reused by the button below so its label is meaningful rather than
+    // a one-size-fits-all "Next Concept →".
+    const nextTitle = buildConcept < concepts.length - 1
+      ? concepts[buildConcept + 1].title.split("—")[0].trim()
+      : null;
+    return (
+      <div>
+        <div style={{ display: "flex", overflowX: "auto", gap: 6, padding: "12px 12px 0" }}>
+          {concepts.map((c, i) => (
+            <button key={i} onClick={() => { setBuildConcept(i); setBuildMode("plain"); }} style={{
+              flexShrink: 0, padding: "6px 12px", borderRadius: 99, border: "none", fontWeight: 600, fontSize: "0.72rem",
+              cursor: "pointer",
+              background: buildConcept === i ? "#38bdf8" : "#1e293b",
+              color: buildConcept === i ? "#0f172a" : "#e2e8f0",
+            }}>{`${i + 1}. ${c.title.split("—")[0].trim()}`}</button>
+          ))}
         </div>
-        <div style={{ background: "#0f172a", borderRadius: 10, padding: "14px", marginBottom: 14 }}>
-          {buildMode === "plain" && <div style={{ ...s.p, marginBottom: 0 }}>{concepts[buildConcept].plain}</div>}
-          {buildMode === "tech" && <div style={{ ...s.p, color: "#7dd3fc", fontFamily: "monospace", fontSize: "0.78rem", marginBottom: 0 }}>{concepts[buildConcept].technical}</div>}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          {conceptTimer > 0
-            ? <div style={{ color: "#64748b", fontSize: "0.8rem" }}>⏳ Next concept unlocks in {conceptTimer}s…</div>
-            : buildConcept < concepts.length - 1
-              ? <button style={s.btn()} onClick={() => setBuildConcept(buildConcept + 1)}>Next Concept →</button>
+        <div style={s.card}>
+          <div style={s.h3}>{concepts[buildConcept].title}</div>
+          <div style={s.animBox}><ConceptAnimation index={buildConcept} frame={animFrame} /></div>
+          <div style={s.toggleRow}>
+            <button style={s.toggleBtn(buildMode === "plain")} onClick={() => setBuildMode("plain")}>💬 Plain English</button>
+            <button style={s.toggleBtn(buildMode === "tech")} onClick={() => setBuildMode("tech")}>🔬 Technical</button>
+          </div>
+          <div style={{ background: "#0f172a", borderRadius: 10, padding: "14px", marginBottom: 14 }}>
+            {buildMode === "plain" && <div style={{ ...s.p, marginBottom: 0 }}>{concepts[buildConcept].plain}</div>}
+            {buildMode === "tech" && <div style={{ ...s.p, color: "#7dd3fc", fontFamily: "monospace", fontSize: "0.78rem", marginBottom: 0 }}>{concepts[buildConcept].technical}</div>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            {nextTitle
+              ? <button style={s.btn()} onClick={() => { setBuildConcept(buildConcept + 1); setBuildMode("plain"); }}>Next: {nextTitle} →</button>
               : <button style={s.btn("#4ade80")} onClick={() => setStage(2)}>I've got it! See It in Action →</button>}
-          <div style={s.tag("#38bdf8")}>{buildConcept + 1} / {concepts.length}</div>
+            <div style={s.tag("#38bdf8")}>{buildConcept + 1} / {concepts.length}</div>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ── SEE IT ────────────────────────────────────────────────────────────────
   // Walks through the same paragraph getting fought over by three rules of
@@ -851,7 +840,7 @@ export default function Unit3_1({ student, onUnitComplete }) {
         <div style={s.stagePills}>{stageNames.map((name, i) => <span key={i} style={s.pill(stage === i, stage > i)}>{name}</span>)}</div>
       </div>
       {stage === 0 && (
-        <div style={{ padding: "14px 20px 0", color: "#64748b", fontSize: "0.82rem" }}>
+        <div style={{ padding: "14px 20px 0", color: "#64748b", fontSize: "0.82rem", maxWidth: 760, margin: "0 auto", boxSizing: "border-box" }}>
           👋 Welcome, <strong style={{ color: "#e2e8f0" }}>{student?.name || "Student"}</strong>
         </div>
       )}
@@ -899,28 +888,40 @@ function ConceptAnimation({ index, frame }) {
     );
   }
 
-  // Concept 1 — Three ways to write CSS: cycles a highlight through three
-  // little code cards representing inline / internal / external.
+  // Concept 1 — Three ways to write CSS: source-code pane next to a
+  // rendered-output pane, cycling inline / internal / external.
   if (index === 1) {
+    // Cycles through the three ways to write CSS, but instead of just
+    // naming them, it shows BOTH halves of the idea at once: the actual
+    // code on the left ("where it's written") and the resulting rendered
+    // text on the right ("what shows on the page") — colour-matched so the
+    // connection between the two is impossible to miss, even without
+    // reading a word of the surrounding text.
     const which = Math.floor(pos * 3) % 3;
     const items = [
-      ["inline", 'style="color:red"', "#fb923c"],
-      ["internal", "<style>...</style>", "#38bdf8"],
-      ["external", "<link href=styles.css>", "#4ade80"],
+      { label: "inline", color: "#fb923c", code: ['<p ', 'style="color:red"', '>Hi</p>'], note: "only THIS tag turns red" },
+      { label: "internal", color: "#38bdf8", code: ['<style>\n  ', 'p { color: red; }', '\n</style>'], note: "every <p> on this page turns red" },
+      { label: "external", color: "#4ade80", code: ['styles.css:\n  ', 'p { color: red; }', ''], note: "every page linking this file turns red" },
     ];
+    const cur = items[which];
     return (
       <div style={base}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {items.map(([label, code, color], i) => (
-            <div key={label} style={{
-              display: "flex", gap: 8, alignItems: "center", padding: "5px 10px", borderRadius: 8,
-              background: which === i ? color + "22" : "#1e293b", border: which === i ? `2px solid ${color}` : "1px dashed #334155", transition: "all 0.3s",
-            }}>
-              <span style={{ fontSize: "0.66rem", fontWeight: 700, color: which === i ? color : "#475569", width: 52 }}>{label}</span>
-              <span style={{ fontFamily: "monospace", fontSize: "0.62rem", color: which === i ? "#e2e8f0" : "#475569" }}>{code}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", justifyContent: "center" }}>
+          <div style={{ background: "#1e293b", borderRadius: 8, padding: "6px 8px", flex: "0 1 45%", minWidth: 0 }}>
+            <div style={{ fontSize: "0.56rem", color: "#475569", marginBottom: 3 }}>{cur.label} — where it's written</div>
+            <div style={{ fontFamily: "monospace", fontSize: "0.6rem", whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
+              <span style={{ color: "#475569" }}>{cur.code[0]}</span>
+              <span style={{ background: cur.color + "33", color: cur.color, borderRadius: 3, padding: "0 2px", fontWeight: 700 }}>{cur.code[1]}</span>
+              <span style={{ color: "#475569" }}>{cur.code[2]}</span>
             </div>
-          ))}
+          </div>
+          <div style={{ color: "#475569", fontSize: "0.9rem" }}>→</div>
+          <div style={{ background: "#fff", borderRadius: 8, padding: "10px 8px", flex: "0 1 38%", minWidth: 0, textAlign: "center" }}>
+            <div style={{ fontSize: "0.56rem", color: "#64748b", marginBottom: 3 }}>what shows up</div>
+            <div style={{ fontWeight: 700, fontSize: "0.85rem", color: cur.color }}>Hi</div>
+          </div>
         </div>
+        <div style={{ position: "absolute", bottom: 4, fontSize: "0.58rem", color: cur.color, fontWeight: 600 }}>{cur.note}</div>
       </div>
     );
   }
@@ -948,22 +949,53 @@ function ConceptAnimation({ index, frame }) {
     );
   }
 
-  // Concept 3 — Selectors: a tag/class/ID each glow in turn to show the
-  // three basic selector "categories" cycling.
+  // Concept 3 — Selectors: shows the SAME idea as concept 1's animation —
+  // source on the left, rendered result on the right — but now the right
+  // side is a tiny mock page with THREE elements, and the current selector
+  // (p / .card / #header) lights up only the element(s) it actually
+  // matches in BOTH panes at once, so "this selector finds THESE elements"
+  // is something the student watches happen, not something they read.
   if (index === 3) {
     const which = Math.floor(pos * 3) % 3;
-    const labels = [["p", "#38bdf8"], [".card", "#a78bfa"], ["#header", "#4ade80"]];
+    const selectors = [
+      { txt: "p", color: "#38bdf8", matches: [true, true, false] },
+      { txt: ".card", color: "#a78bfa", matches: [false, true, false] },
+      { txt: "#header", color: "#4ade80", matches: [false, false, true] },
+    ];
+    const elements = [
+      { tag: "<p>", short: "para" },
+      { tag: '<p class="card">', short: "card" },
+      { tag: '<div id="header">', short: "header" },
+    ];
+    const cur = selectors[which];
     return (
       <div style={base}>
-        <div style={{ display: "flex", gap: 16 }}>
-          {labels.map(([txt, color], i) => (
-            <div key={txt} style={{
-              padding: "8px 14px", borderRadius: 8, fontFamily: "monospace", fontWeight: 700, fontSize: "0.8rem",
-              background: which === i ? color + "22" : "#1e293b", border: which === i ? `2px solid ${color}` : "1px dashed #334155",
-              color: which === i ? color : "#475569", transition: "all 0.3s",
-            }}>{txt}</div>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", justifyContent: "center" }}>
+          <div style={{ background: "#1e293b", borderRadius: 8, padding: "6px 8px", flex: "0 1 48%", minWidth: 0 }}>
+            <div style={{ fontSize: "0.56rem", color: "#475569", marginBottom: 3 }}>the html</div>
+            {elements.map((el, i) => (
+              <div key={i} style={{
+                fontFamily: "monospace", fontSize: "0.56rem", lineHeight: 1.7,
+                color: cur.matches[i] ? cur.color : "#475569",
+                fontWeight: cur.matches[i] ? 700 : 400,
+                background: cur.matches[i] ? cur.color + "22" : "transparent",
+                borderRadius: 3, padding: "0 2px",
+              }}>{el.tag}</div>
+            ))}
+          </div>
+          <div style={{ color: "#475569", fontSize: "0.9rem" }}>→</div>
+          <div style={{ background: "#fff", borderRadius: 8, padding: "6px 8px", flex: "0 1 38%", minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+            {elements.map((el, i) => (
+              <div key={i} style={{
+                fontSize: "0.56rem", padding: "3px 5px", borderRadius: 4, textAlign: "center",
+                border: cur.matches[i] ? `2px solid ${cur.color}` : "1px solid #e2e8f0",
+                background: cur.matches[i] ? cur.color + "22" : "#f8fafc",
+                color: cur.matches[i] ? cur.color : "#94a3b8", fontWeight: cur.matches[i] ? 700 : 400,
+              }}>{el.short}{cur.matches[i] ? " ✓" : ""}</div>
+            ))}
+          </div>
         </div>
+        <div style={{ position: "absolute", bottom: 4, fontSize: "0.62rem", color: cur.color, fontWeight: 700, fontFamily: "monospace" }}>{cur.txt}</div>
       </div>
     );
   }
