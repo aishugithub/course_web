@@ -39,8 +39,8 @@ new course by copying this whole folder.
    → run setupSheets() once → Deploy as Web App → get the GAS URL
 7. Paste the GAS URL into config/gas.config.js
 8. npm run dev → test locally
-9. git init → git add . → git commit -m "init" → git branch -M main →
-   git remote add origin https://github.com/aishugithub/REPO_NAME →
+9. git init → git add . → git commit -m "init" → git branch -M main → 
+   git remote add origin https://github.com/aishugithub/course_web→
    git push origin main
 10. GitHub repo → Settings → Actions → General → Workflow permissions →
     "Read and write permissions" → Save
